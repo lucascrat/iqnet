@@ -1,0 +1,6 @@
+{
+  "name": "IQ Master Pro: EUR/USD Terminal",
+  "description": "Terminal de análise estratégica HFT para EUR/USD com integração de sinais via Gemini 2.0 e execução assistida.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
