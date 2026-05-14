@@ -202,11 +202,22 @@ export default function App() {
     
     setBridgeStatus('TRANSMITTING');
     const amount = 100;
+
+    setVisionLogs(prev => [
+      `>>> TRANSMITINDO ORDEM: ${type} EUR/USD`,
+      `>>> PAYLOAD: {"pair": "EUR/USD", "dir": "${type}", "amount": 100}`,
+      `>>> STATUS: AGUARDANDO CONFIRMAÇÃO DO SERVIDOR...`,
+      ...prev
+    ].slice(0, 10));
+
     setBalance(prev => prev - amount);
     setActiveTrade({ type, entryPrice: currentPrice, amount });
 
     // Restore bridge status after transmission burst
-    setTimeout(() => setBridgeStatus('CONNECTED'), 2000);
+    setTimeout(() => {
+      setBridgeStatus('CONNECTED');
+      setVisionLogs(prev => ["STATUS: ORDEM CONFIRMADA NO TRADEROOM", ...prev].slice(0, 10));
+    }, 2500);
 
     // Resolve trade after 5 seconds
     const duration = 5000;
@@ -417,7 +428,35 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-[#0a0a0f] text-slate-200 font-sans selection:bg-indigo-500/30">
+      <div className="min-h-screen bg-[#0a0a0f] text-slate-200 font-sans selection:bg-indigo-500/30 relative">
+        {/* Transmission Overlay */}
+        <AnimatePresence>
+          {bridgeStatus === 'TRANSMITTING' && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
+            >
+              <div className="relative">
+                <motion.div 
+                  initial={{ scale: 0, opacity: 0.5 }}
+                  animate={{ scale: [0, 4, 0], opacity: [0, 0.8, 0] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-4 ${activeTrade?.type === 'CALL' ? 'border-emerald-500 bg-emerald-500/20' : 'border-rose-500 bg-rose-500/20'}`}
+                />
+                <div className="bg-indigo-600/90 backdrop-blur-md px-8 py-4 rounded-full border border-indigo-400/50 shadow-[0_0_50px_rgba(79,70,229,0.5)] flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-3">
+                    <Zap className="text-white animate-pulse" size={20} />
+                    <span className="text-sm font-black text-white uppercase tracking-[0.3em]">HFT PULSE: CLICK TRIGGERED</span>
+                  </div>
+                  <span className="text-[10px] text-indigo-200 font-mono">TARGET_REGION: IQ_TRADEROOM_BTN</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       {/* Marquee Ticker */}
       <div className="bg-indigo-600/10 border-b border-indigo-500/10 h-8 flex items-center overflow-hidden whitespace-nowrap">
         <motion.div 
@@ -863,30 +902,54 @@ export default function App() {
 
             {/* Vision Hub */}
           <div className="bg-[#0d0d14] rounded-2xl border border-white/5 p-5 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-indigo-500/5 animate-pulse pointer-events-none" />
+            <div className={`absolute inset-0 transition-opacity duration-1000 ${bridgeStatus === 'TRANSMITTING' ? 'bg-indigo-500/15 opacity-100' : 'bg-indigo-500/5 opacity-50'} animate-pulse pointer-events-none`} />
             <div className="flex items-center justify-between mb-4 relative z-10">
                <div className="flex items-center gap-2">
-                 <Zap className="text-amber-400" size={16} />
-                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vision Core v2.0</span>
+                 <Eye size={16} className="text-indigo-400" />
+                 <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Vision Core v2.0</span>
                </div>
                <div className={`w-2 h-2 rounded-full ${isVisionActive ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-slate-700'}`} />
             </div>
 
-            <div className="aspect-video bg-black/40 rounded-xl border border-white/5 relative overflow-hidden flex items-center justify-center group mb-4">
-               {/* Simulated Scanner Line */}
-               <motion.div 
-                 animate={{ top: ['0%', '100%', '0%'] }}
-                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                 className="absolute left-0 right-0 h-[2px] bg-indigo-500/50 shadow-[0_0_15px_#4f46e5] z-20"
-               />
-               <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 opacity-10">
-                 {Array(16).fill(0).map((_, i) => <div key={i} className="border border-white/20" />)}
-               </div>
-               <BarChart3 className="text-indigo-500/20 group-hover:text-indigo-500/40 transition-colors" size={48} />
-               <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center bg-black/60 backdrop-blur-sm p-1.5 rounded-lg border border-white/5">
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Live Screenshot Stream</span>
-                  <span className="text-[8px] font-mono text-emerald-400">FPS: 60.0</span>
-               </div>
+            {/* Virtual Click-Pad Matrix */}
+            <div className="mb-4 grid grid-cols-6 gap-1 p-2 bg-black/40 rounded-xl border border-white/5 relative z-10 overflow-hidden">
+              <div className="col-span-full mb-1 flex justify-between items-center px-1">
+                <span className="text-[7px] text-slate-500 uppercase font-black tracking-widest">Auto-Click Matrix</span>
+                 {bridgeStatus === 'TRANSMITTING' && (
+                  <motion.span 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    className="text-[7px] text-indigo-400 font-black animate-pulse"
+                  >
+                    EXECUTANDO TOQUE...
+                  </motion.span>
+                 )}
+              </div>
+              
+              <div className="col-span-4 h-24 rounded-lg bg-slate-900/50 border border-white/5 flex items-center justify-center relative overflow-hidden">
+                 <div className="absolute inset-0 grid grid-cols-8 grid-rows-4 opacity-[0.03]">
+                    {Array(32).fill(0).map((_, i) => <div key={i} className="border border-white" />)}
+                 </div>
+                 <motion.div 
+                   animate={{ top: ['0%', '100%', '0%'] }}
+                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                   className="absolute left-0 right-0 h-[1px] bg-indigo-500/30 z-10 shadow-[0_0_10px_#4f46e5]"
+                 />
+                 <div className="text-[7px] font-mono text-indigo-400/40 text-center uppercase tracking-tighter">
+                   Signal_Buffer: 0x{activeTrade ? 'E851' : 'A290'}<br/>
+                   X: {activeTrade ? (Math.random() * 100 + 1500).toFixed(0) : '0'}<br/>
+                   Y: {activeTrade ? (Math.random() * 100 + 400).toFixed(0) : '0'}
+                 </div>
+              </div>
+
+              <div className="col-span-2 flex flex-col gap-1">
+                <div className={`flex-1 rounded border border-white/5 flex items-center justify-center transition-all duration-300 ${bridgeStatus === 'TRANSMITTING' && activeTrade?.type === 'CALL' ? 'bg-emerald-600 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-emerald-950/20 grayscale opacity-40'}`}>
+                  <ArrowUp size={14} className={bridgeStatus === 'TRANSMITTING' && activeTrade?.type === 'CALL' ? 'text-white' : 'text-emerald-500/50'} />
+                </div>
+                <div className={`flex-1 rounded border border-white/5 flex items-center justify-center transition-all duration-300 ${bridgeStatus === 'TRANSMITTING' && activeTrade?.type === 'PUT' ? 'bg-rose-600 border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-rose-950/20 grayscale opacity-40'}`}>
+                  <ArrowDown size={14} className={bridgeStatus === 'TRANSMITTING' && activeTrade?.type === 'PUT' ? 'text-white' : 'text-rose-500/50'} />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5 h-32 overflow-hidden">
